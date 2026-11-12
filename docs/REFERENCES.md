@@ -4,7 +4,7 @@ Research date: 2026-11-10. The first implementation incorrectly treated four dev
 
 ## Physical references
 
-Apple's [Identify your iPod model](https://support.apple.com/en-us/103823) supplies the front-facing product photographs in `docs/reference`. The app uses cropped front views from those photographs, with live content over the LCD and an invisible touch wheel over the original wheel. The front photographs are Apple artwork, not generated hardware. White surrounding space matches the reference image background. Each body is uniformly scaled to fit the screen; neither axis is stretched independently.
+Apple's [Identify your iPod model](https://support.apple.com/en-us/103823) supplies the front-facing product photographs in `docs/reference`. The app now draws the wheels with vector paths, using the photographs to measure the rings, center buttons and printed controls. A live full-width LCD sits above the wheel. The iPod touch supplies the physical enclosure; there is no second device bezel. The front photographs remain research references, not enlarged runtime wheel textures. The LCD keeps its native aspect ratio and fills roughly the upper half. The remaining space holds a comfortably sized wheel on a matching material. Full-device physical proportions are deliberately not preserved, per the user’s updated direction.
 
 | Skin | Reference | Native LCD | Important differences |
 | --- | --- | --- | --- |
@@ -38,13 +38,13 @@ Period photographs (reference only, not bundled as fake live UI):
 
 Observed color interface: left menu/right artwork at the top levels; full-width detailed song lists; gray title strip; blue selection; small disclosure arrows; Now Playing art on the left, metadata on the right, elapsed/remaining time at the bottom. Mono menus use centered titles, a single divider, solid inverse selection, one-line rows, and black/blue-gray battery/play symbols without a color progress control.
 
-The monochrome font is the Chicago reconstruction from [nikdog/chicago-font](https://github.com/nikdog/chicago-font), `Chicago v0.5.5.ttf`, PostScript name `Chicago`. It is closer than Courier, but is not asserted to be a byte-identical extraction of iPod firmware. Apple/Susan Kare are credited for the original design. Color text remains the system sans-serif; exact Podium Sans metrics remain a fidelity gap.
+The monochrome font is the Chicago reconstruction from [nikdog/chicago-font](https://github.com/nikdog/chicago-font), `Chicago v0.5.5.ttf`, PostScript name `Chicago`. It is closer than Courier, but is not asserted to be a byte-identical extraction of iPod firmware. Apple/Susan Kare are credited for the original design. Color menus explicitly use Helvetica Bold, matching the later Nano 3 / Classic interface rather than applying the older color iPods’ Podium Sans design. Exact firmware rasterization is not claimed.
 
 ## Navigation and motion
 
 Forward navigation pushes the LCD content from the right; Menu reverses the direction. The hardware remains stationary. Selection changes, settings toggles, playback notifications, and progress ticks do not initiate a navigation animation. Leaving the app cancels the transition. Animation uses a stable key so repeated input replaces the visual transition instead of accumulating retained snapshots or delayed completion callbacks.
 
-The 220 ms ease-in/ease-out duration is an implementation tuning value, **not a measured firmware timing**. Still photos establish layout but cannot prove transition cadence. Compare against original-device footage before calling motion exact. Artwork panning, Cover Flow, the full center-button ratings/shuffle/lyrics sequence, and exact firmware scrolling behavior remain unimplemented.
+The 220 ms ease-in/ease-out duration is an implementation tuning value, **not a measured firmware timing**. Still photos establish layout but cannot prove transition cadence. Compare against original-device footage before calling motion exact. Cover Flow is implemented on Nano 3 and Classic with perspective covers, reflections, wheel/skip-button browsing, album selection and the real music queue. Artwork panning and the full center-button ratings/shuffle/lyrics sequence remain fidelity gaps. Wheel sensitivity intentionally differs from the first prototype: 0.32 radians per step, no speed multiplier (about 20 items per turn).
 
 ## iPhone OS 1 app icon
 
@@ -56,4 +56,14 @@ The icon is a 57×57 crop of the original orange/yellow iPod icon in the archive
 
 Original artwork is credited to Apple. The Commons listing identifies CC BY-SA 4.0; retain that attribution and source provenance. The crop and scale are the modifications. Do not describe these assets as original Rewind artwork or imply Apple endorsement.
 
-Regenerate the shell crops and icon with `swift res/extract-reference-assets.swift` from the repository root.
+Historical shell crops are retained only as references. Regenerate reference crops and the icon with `swift res/extract-reference-assets.swift` from the repository root.
+
+## Colors and Cover Flow
+
+- [Apple’s 2007 Classic announcement](https://www.apple.com/newsroom/2007/09/05Apple-Introduces-New-iPod-classic/) confirms Cover Flow and silver/black finishes.
+- [Apple’s Classic guide](https://cdsassets.apple.com/live/6GJYWVAV/user/ma630_ipod_classic_120gb_en.pdf), page 7, documents wheel/Previous/Next album browsing, Center to open, then song selection.
+- Nano offers black, silver, blue, green, red, and [pink added in January 2008](https://www.apple.com/newsroom/2008/01/22Apple-Adds-Pink-to-the-iPod-nano-Lineup/).
+- First-generation Mini offers silver, blue, green, pink and gold. Its wheel labels remain gray; colored labels belong to the second generation.
+- Choices are saved separately for each skin. Original remains white.
+
+Vector wheel previews can be rendered from the production drawing method on macOS with `python3 tools/preview-wheels.py`. These are drawing checks, not substitute device screenshots.
