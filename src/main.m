@@ -323,10 +323,11 @@ static CGFloat CoverX(NSInteger delta){return 160+(delta==0?0:(delta>0?1:-1)*(10
 }
 - (UIView *)cardFor:(NSInteger)i {
     NSArray *pair=[self coverFor:i];
-    UIView *card=[[[UIView alloc] initWithFrame:CGRectMake(0,0,RW_COVER,RW_COVER+1+RW_REFLECT)] autorelease];card.userInteractionEnabled=NO;card.backgroundColor=[UIColor blackColor];card.opaque=YES;
+    UIView *card=[[[UIView alloc] initWithFrame:CGRectMake(0,0,RW_COVER,RW_COVER+RW_REFLECT)] autorelease];card.userInteractionEnabled=NO;card.backgroundColor=[UIColor blackColor];card.opaque=YES;
     CALayer *front=[CALayer layer],*mirror=[CALayer layer];
     front.frame=CGRectMake(0,0,RW_COVER,RW_COVER);front.contents=(id)[[pair objectAtIndex:0] CGImage];front.opaque=YES;
-    mirror.frame=CGRectMake(0,RW_COVER+1,RW_COVER,RW_REFLECT);mirror.contents=(id)[[pair objectAtIndex:1] CGImage];mirror.opaque=YES;
+    // No gap: a 1 pt seam aliases into a dashed line on the angled side covers.
+    mirror.frame=CGRectMake(0,RW_COVER,RW_COVER,RW_REFLECT);mirror.contents=(id)[[pair objectAtIndex:1] CGImage];mirror.opaque=YES;
     [card.layer addSublayer:front];[card.layer addSublayer:mirror];return card;
 }
 - (void)place:(UIView *)card delta:(NSInteger)delta {
