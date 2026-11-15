@@ -4,6 +4,7 @@
 #import <AudioToolbox/AudioToolbox.h>
 #import "WheelMath.h"
 #import "ClickSounds.h"
+#import "Scrobbler.h"
 static UIColor *RGB(float r,float g,float b){return [UIColor colorWithRed:r green:g blue:b alpha:1];}
 static void Gradient(CGContextRef c,CGRect r,UIColor *a,UIColor *b){CGColorSpaceRef s=CGColorSpaceCreateDeviceRGB();NSArray *colors=[NSArray arrayWithObjects:(id)a.CGColor,(id)b.CGColor,nil];CGGradientRef g=CGGradientCreateWithColors(s,(CFArrayRef)colors,NULL);CGContextSaveGState(c);CGContextClipToRect(c,r);CGContextDrawLinearGradient(c,g,CGPointMake(CGRectGetMidX(r),r.origin.y),CGPointMake(CGRectGetMidX(r),CGRectGetMaxY(r)),0);CGContextRestoreGState(c);CGGradientRelease(g);CGColorSpaceRelease(s);}
 
@@ -520,7 +521,7 @@ if(disclosure){PodArrow *arrow=[[[PodArrow alloc] initWithFrame:CGRectMake(0,0,9
 
 - (void)tableView:(UITableView *)t didSelectRowAtIndexPath:(NSIndexPath *)p {selection=p.row;[self choose];}
 - (void)click {NSTimeInterval t=[NSDate timeIntervalSinceReferenceDate];if(clicks&&t-lastClick>.045){RWPlayClick(skin);lastClick=t;}}
-- (void)wheelTurn:(int)steps {if(now){if(seekMode){double total=[[music.nowPlayingItem valueForProperty:MPMediaItemPropertyPlaybackDuration] doubleValue];music.currentPlaybackTime=fmax(0,fmin(total,music.currentPlaybackTime+steps*3));}else {music.volume=fmax(0,fmin(1,music.volume+steps*.025));volumeUntil=[NSDate timeIntervalSinceReferenceDate]+2;}[self tick];return;}NSInteger next=RWClampSelection((int)selection,steps,(int)rows.count);if(next!=selection){selection=next;if(cover){[self click];[coverDeck showSelection:selection animated:YES];return;}if(skin==1||skin==2){[self click];[self renderMono];return;}NSIndexPath *p=[NSIndexPath indexPathForRow:selection inSection:0];[table selectRowAtIndexPath:p animated:NO scrollPosition:UITableViewScrollPositionNone];[table scrollToRowAtIndexPath:p atScrollPosition:UITableViewScrollPositionNone animated:NO];[self updateScrollBar];[self click];}}
+- (void)wheelTurn:(int)steps {if(now){if(seekMode){double total=[[music.nowPlayingItem valueForProperty:MPMediaItemPropertyPlaybackDuration] doubleValue];[[NSNotificationCenter defaultCenter] postNotificationName:RWScrobbleWillSeekNotification object:nil];music.currentPlaybackTime=fmax(0,fmin(total,music.currentPlaybackTime+steps*3));[[NSNotificationCenter defaultCenter] postNotificationName:RWScrobbleDidSeekNotification object:nil];}else {music.volume=fmax(0,fmin(1,music.volume+steps*.025));volumeUntil=[NSDate timeIntervalSinceReferenceDate]+2;}[self tick];return;}NSInteger next=RWClampSelection((int)selection,steps,(int)rows.count);if(next!=selection){selection=next;if(cover){[self click];[coverDeck showSelection:selection animated:YES];return;}if(skin==1||skin==2){[self click];[self renderMono];return;}NSIndexPath *p=[NSIndexPath indexPathForRow:selection inSection:0];[table selectRowAtIndexPath:p animated:NO scrollPosition:UITableViewScrollPositionNone];[table scrollToRowAtIndexPath:p atScrollPosition:UITableViewScrollPositionNone animated:NO];[self updateScrollBar];[self click];}}
 - (void)wheelButton:(int)b {[self click];if(cover&&!now&&(b==3||b==4)){[self wheelTurn:b==3?-1:1];return;}if(b==1){[self back];return;}if(b==2){if(music.playbackState==MPMusicPlaybackStatePlaying)[music pause];else [music play];return;}if(b==3){if(music.currentPlaybackTime>3)[music skipToBeginning];else [music skipToPreviousItem];return;}if(b==4){[music skipToNextItem];return;}if(now){seekMode=!seekMode;volumeUntil=0;[self tick];}else [self choose];}
 - (void)showQuery:(MPMediaQuery *)q kind:(NSString *)kind title:(NSString *)title {NSMutableArray *r=[NSMutableArray array];if([kind isEqual:@"song"]){for(MPMediaItem *i in q.items)[r addObject:[self row:[i valueForProperty:MPMediaItemPropertyTitle]?:@"Untitled" kind:@"song" value:i]];}else for(MPMediaItemCollection *c in q.collections){NSString *t=[kind isEqual:@"artist"]?[c.representativeItem valueForProperty:MPMediaItemPropertyArtist]:[kind isEqual:@"album"]?[c.representativeItem valueForProperty:MPMediaItemPropertyAlbumTitle]:[kind isEqual:@"genre"]?[c.representativeItem valueForProperty:MPMediaItemPropertyGenre]:[kind isEqual:@"composer"]?[c.representativeItem valueForProperty:MPMediaItemPropertyComposer]:[(MPMediaPlaylist *)c valueForProperty:MPMediaPlaylistPropertyName];[r addObject:[self row:t?:@"Unknown" kind:[kind isEqual:@"album"]?@"albumcollection":[kind isEqual:@"artist"]?@"artistcollection":@"collection" value:c]];}if(!r.count)[r addObject:[self row:@"No music synced" kind:@"empty" value:nil]];[self setRows:r title:title];}
 - (void)settings {
@@ -586,21 +587,21 @@ if(navigation)[self finishTransition];
 - (void)didReceiveMemoryWarning {[super didReceiveMemoryWarning];if(!active)[self releaseMemory];else [coverDeck trim];}
 - (void)dealloc {RWDisposeClicks();[self setActive:NO];[[NSNotificationCenter defaultCenter] removeObserver:self];[music endGeneratingPlaybackNotifications];[[MPMediaLibrary defaultMediaLibrary] endGeneratingLibraryChangeNotifications];table.delegate=nil;table.dataSource=nil;wheel.delegate=nil;[shell release];[coverDeck release];[monoLCD release];[wheel release];[lcd release];[preview release];[reflectionFade release];[reflection release];[album release];[topBar release];[battery release];[header release];[detail release];[song release];[artist release];[clockLabel release];[hint release];[art release];[table release];[progress release];[scrollTrack release];[scrollThumb release];[artID release];[music release];[stack release];[rows release];[menuTitle release];[super dealloc];}
 @end
-@interface App : NSObject <UIApplicationDelegate> {UIWindow *window;Player *player;UIBackgroundTaskIdentifier backgroundTask;BOOL background;NSUInteger session;}
+@interface App : NSObject <UIApplicationDelegate> {UIWindow *window;Player *player;RWScrobbler *scrobbler;UIBackgroundTaskIdentifier backgroundTask;BOOL background;NSUInteger session;}
 @end
 @implementation App
-- (BOOL)application:(UIApplication *)a didFinishLaunchingWithOptions:(NSDictionary *)o {[a setStatusBarHidden:YES];backgroundTask=UIBackgroundTaskInvalid;window=[[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];player=[[Player alloc] init];[window addSubview:player.view];[window makeKeyAndVisible];return YES;}
-- (void)applicationDidBecomeActive:(UIApplication *)a {[player setActive:YES];}
-- (void)applicationWillResignActive:(UIApplication *)a {[player setActive:NO];}
+- (BOOL)application:(UIApplication *)a didFinishLaunchingWithOptions:(NSDictionary *)o {[a setStatusBarHidden:YES];backgroundTask=UIBackgroundTaskInvalid;window=[[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];player=[[Player alloc] init];[window addSubview:player.view];[window makeKeyAndVisible];scrobbler=[[RWScrobbler alloc] init];return YES;}
+- (void)applicationDidBecomeActive:(UIApplication *)a {[scrobbler sync];[player setActive:YES];}
+- (void)applicationWillResignActive:(UIApplication *)a {[scrobbler sync];[player setActive:NO];}
 - (void)endBackgroundTask {if(backgroundTask!=UIBackgroundTaskInvalid){[[UIApplication sharedApplication] endBackgroundTask:backgroundTask];backgroundTask=UIBackgroundTaskInvalid;}}
 // Wait one second so the app-switcher snapshot shows the real screen, then release.
 - (void)applicationDidEnterBackground:(UIApplication *)a {
-    background=YES;[self endBackgroundTask];NSUInteger mine=++session;
+    background=YES;[scrobbler sync];[self endBackgroundTask];NSUInteger mine=++session;
     backgroundTask=[a beginBackgroundTaskWithExpirationHandler:^{[self endBackgroundTask];}];
     // Only the latest background session may purge or end its own task.
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(NSEC_PER_SEC)),dispatch_get_main_queue(),^{if(mine!=session)return;if(background)[player releaseMemory];[self endBackgroundTask];});
 }
 - (void)applicationWillEnterForeground:(UIApplication *)a {background=NO;session++;[self endBackgroundTask];[player restoreMemory];}
-- (void)dealloc {[player setActive:NO];[player release];[window release];[super dealloc];}
+- (void)dealloc {[player setActive:NO];[player release];[scrobbler release];[window release];[super dealloc];}
 @end
 int main(int argc,char **argv){NSAutoreleasePool *p=[[NSAutoreleasePool alloc] init];int r=UIApplicationMain(argc,argv,nil,@"App");[p release];return r;}
